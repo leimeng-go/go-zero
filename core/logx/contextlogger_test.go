@@ -29,7 +29,7 @@ func TestTraceLog(t *testing.T) {
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(otp)
 
-	ctx, span := tp.Tracer("foo").Start(context.Background(), "bar")
+	ctx, span := tp.Tracer("trace-id").Start(context.Background(), "span-id")
 	defer span.End()
 
 	WithContext(ctx).Info(testlog)
@@ -50,7 +50,7 @@ func TestTraceError(t *testing.T) {
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(otp)
 
-	ctx, span := tp.Tracer("foo").Start(context.Background(), "bar")
+	ctx, span := tp.Tracer("trace-id").Start(context.Background(), "span-id")
 	defer span.End()
 
 	var nilCtx context.Context
@@ -67,10 +67,10 @@ func TestTraceError(t *testing.T) {
 	l.WithDuration(time.Second).Errorv(testlog)
 	validate(t, w.String(), true, true)
 	w.Reset()
-	l.WithDuration(time.Second).Errorw(testlog, Field("foo", "bar"))
+	l.WithDuration(time.Second).Errorw(testlog, Field("basket", "ball"))
 	validate(t, w.String(), true, true)
-	assert.True(t, strings.Contains(w.String(), "foo"), w.String())
-	assert.True(t, strings.Contains(w.String(), "bar"), w.String())
+	assert.True(t, strings.Contains(w.String(), "basket"), w.String())
+	assert.True(t, strings.Contains(w.String(), "ball"), w.String())
 }
 
 func TestTraceInfo(t *testing.T) {
@@ -87,7 +87,7 @@ func TestTraceInfo(t *testing.T) {
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(otp)
 
-	ctx, span := tp.Tracer("foo").Start(context.Background(), "bar")
+	ctx, span := tp.Tracer("trace-id").Start(context.Background(), "span-id")
 	defer span.End()
 
 	SetLevel(InfoLevel)
@@ -101,10 +101,10 @@ func TestTraceInfo(t *testing.T) {
 	l.WithDuration(time.Second).Infov(testlog)
 	validate(t, w.String(), true, true)
 	w.Reset()
-	l.WithDuration(time.Second).Infow(testlog, Field("foo", "bar"))
+	l.WithDuration(time.Second).Infow(testlog, Field("basket", "ball"))
 	validate(t, w.String(), true, true)
-	assert.True(t, strings.Contains(w.String(), "foo"), w.String())
-	assert.True(t, strings.Contains(w.String(), "bar"), w.String())
+	assert.True(t, strings.Contains(w.String(), "basket"), w.String())
+	assert.True(t, strings.Contains(w.String(), "ball"), w.String())
 }
 
 func TestTraceInfoConsole(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTraceInfoConsole(t *testing.T) {
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(otp)
 
-	ctx, span := tp.Tracer("foo").Start(context.Background(), "bar")
+	ctx, span := tp.Tracer("trace-id").Start(context.Background(), "span-id")
 	defer span.End()
 
 	l := WithContext(ctx)
@@ -153,7 +153,7 @@ func TestTraceSlow(t *testing.T) {
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(otp)
 
-	ctx, span := tp.Tracer("foo").Start(context.Background(), "bar")
+	ctx, span := tp.Tracer("trace-id").Start(context.Background(), "span-id")
 	defer span.End()
 
 	l := WithContext(ctx)
@@ -168,10 +168,10 @@ func TestTraceSlow(t *testing.T) {
 	l.WithDuration(time.Second).Slowv(testlog)
 	validate(t, w.String(), true, true)
 	w.Reset()
-	l.WithDuration(time.Second).Sloww(testlog, Field("foo", "bar"))
+	l.WithDuration(time.Second).Sloww(testlog, Field("basket", "ball"))
 	validate(t, w.String(), true, true)
-	assert.True(t, strings.Contains(w.String(), "foo"), w.String())
-	assert.True(t, strings.Contains(w.String(), "bar"), w.String())
+	assert.True(t, strings.Contains(w.String(), "basket"), w.String())
+	assert.True(t, strings.Contains(w.String(), "ball"), w.String())
 }
 
 func TestTraceWithoutContext(t *testing.T) {
@@ -190,6 +190,25 @@ func TestTraceWithoutContext(t *testing.T) {
 	w.Reset()
 	l.WithDuration(time.Second).Infof(testlog)
 	validate(t, w.String(), false, false)
+}
+
+func TestLogWithFields(t *testing.T) {
+	w := new(mockWriter)
+	old := writer.Swap(w)
+	writer.lock.RLock()
+	defer func() {
+		writer.lock.RUnlock()
+		writer.Store(old)
+	}()
+
+	ctx := WithFields(context.Background(), Field("foo", "bar"))
+	l := WithContext(ctx)
+	SetLevel(InfoLevel)
+	l.Info(testlog)
+
+	var val mockValue
+	assert.Nil(t, json.Unmarshal([]byte(w.String()), &val))
+	assert.Equal(t, "bar", val.Foo)
 }
 
 func validate(t *testing.T, body string, expectedTrace, expectedSpan bool) {
@@ -217,4 +236,5 @@ func validate(t *testing.T, body string, expectedTrace, expectedSpan bool) {
 type mockValue struct {
 	Trace string `json:"trace"`
 	Span  string `json:"span"`
+	Foo   string `json:"foo"`
 }
