@@ -3,12 +3,11 @@ package mon
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/zeromicro/go-zero/core/breaker"
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx/logtest"
 	"github.com/zeromicro/go-zero/core/stringx"
 	"github.com/zeromicro/go-zero/core/timex"
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,13 +15,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	mopt "go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
 var errDummy = errors.New("dummy")
-
-func init() {
-	logx.Disable()
-}
 
 func TestKeepPromise_accept(t *testing.T) {
 	p := new(mockPromise)
@@ -73,7 +69,6 @@ func TestKeepPromise_keep(t *testing.T) {
 
 func TestNewCollection(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
 	mt.Run("test", func(mt *mtest.T) {
 		coll := mt.Coll
 		assert.NotNil(t, coll)
@@ -84,7 +79,6 @@ func TestNewCollection(t *testing.T) {
 
 func TestCollection_Aggregate(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
 	mt.Run("test", func(mt *mtest.T) {
 		coll := mt.Coll
 		assert.NotNil(t, coll)
@@ -101,8 +95,6 @@ func TestCollection_Aggregate(t *testing.T) {
 
 func TestCollection_BulkWrite(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -110,22 +102,20 @@ func TestCollection_BulkWrite(t *testing.T) {
 		}
 		mt.AddMockResponses(mtest.CreateSuccessResponse(bson.D{{Key: "ok", Value: 1}}...))
 		res, err := c.BulkWrite(context.Background(), []mongo.WriteModel{
-			mongo.NewInsertOneModel().SetDocument(bson.D{{Key: "foo", Value: 1}})},
-		)
+			mongo.NewInsertOneModel().SetDocument(bson.D{{Key: "foo", Value: 1}}),
+		})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		c.brk = new(dropBreaker)
 		_, err = c.BulkWrite(context.Background(), []mongo.WriteModel{
-			mongo.NewInsertOneModel().SetDocument(bson.D{{Key: "foo", Value: 1}})},
-		)
+			mongo.NewInsertOneModel().SetDocument(bson.D{{Key: "foo", Value: 1}}),
+		})
 		assert.Equal(t, errDummy, err)
 	})
 }
 
 func TestCollection_CountDocuments(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -150,8 +140,6 @@ func TestCollection_CountDocuments(t *testing.T) {
 
 func TestDecoratedCollection_DeleteMany(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -170,8 +158,6 @@ func TestDecoratedCollection_DeleteMany(t *testing.T) {
 
 func TestCollection_Distinct(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -190,8 +176,6 @@ func TestCollection_Distinct(t *testing.T) {
 
 func TestCollection_EstimatedDocumentCount(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -208,10 +192,8 @@ func TestCollection_EstimatedDocumentCount(t *testing.T) {
 	})
 }
 
-func TestCollectionFind(t *testing.T) {
+func TestCollection_Find(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -256,10 +238,8 @@ func TestCollectionFind(t *testing.T) {
 	})
 }
 
-func TestCollectionFindOne(t *testing.T) {
+func TestCollection_FindOne(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -302,8 +282,6 @@ func TestCollectionFindOne(t *testing.T) {
 
 func TestCollection_FindOneAndDelete(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -333,8 +311,6 @@ func TestCollection_FindOneAndDelete(t *testing.T) {
 
 func TestCollection_FindOneAndReplace(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -365,8 +341,6 @@ func TestCollection_FindOneAndReplace(t *testing.T) {
 
 func TestCollection_FindOneAndUpdate(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -398,8 +372,6 @@ func TestCollection_FindOneAndUpdate(t *testing.T) {
 
 func TestCollection_InsertOne(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -418,15 +390,13 @@ func TestCollection_InsertOne(t *testing.T) {
 
 func TestCollection_InsertMany(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
 			brk:        breaker.NewBreaker(),
 		}
 		mt.AddMockResponses(mtest.CreateSuccessResponse(bson.D{{Key: "ok", Value: 1}}...))
-		res, err := c.InsertMany(context.Background(), []interface{}{
+		res, err := c.InsertMany(context.Background(), []any{
 			bson.D{{Key: "foo", Value: "bar"}},
 			bson.D{{Key: "foo", Value: "baz"}},
 		})
@@ -435,15 +405,13 @@ func TestCollection_InsertMany(t *testing.T) {
 		assert.Equal(t, 2, len(res.InsertedIDs))
 
 		c.brk = new(dropBreaker)
-		_, err = c.InsertMany(context.Background(), []interface{}{bson.D{{Key: "foo", Value: "bar"}}})
+		_, err = c.InsertMany(context.Background(), []any{bson.D{{Key: "foo", Value: "bar"}}})
 		assert.Equal(t, errDummy, err)
 	})
 }
 
-func TestCollection_Remove(t *testing.T) {
+func TestCollection_DeleteOne(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -460,10 +428,8 @@ func TestCollection_Remove(t *testing.T) {
 	})
 }
 
-func TestCollectionRemoveAll(t *testing.T) {
+func TestCollection_DeleteMany(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -482,8 +448,6 @@ func TestCollectionRemoveAll(t *testing.T) {
 
 func TestCollection_ReplaceOne(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -505,8 +469,6 @@ func TestCollection_ReplaceOne(t *testing.T) {
 
 func TestCollection_UpdateOne(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -527,8 +489,6 @@ func TestCollection_UpdateOne(t *testing.T) {
 
 func TestCollection_UpdateByID(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -549,8 +509,6 @@ func TestCollection_UpdateByID(t *testing.T) {
 
 func TestCollection_UpdateMany(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
-
 	mt.Run("test", func(mt *mtest.T) {
 		c := decoratedCollection{
 			Collection: mt.Coll,
@@ -569,23 +527,14 @@ func TestCollection_UpdateMany(t *testing.T) {
 	})
 }
 
-func Test_DecoratedCollectionLogDuration(t *testing.T) {
+func TestDecoratedCollection_LogDuration(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
 	c := decoratedCollection{
 		Collection: mt.Coll,
 		brk:        breaker.NewBreaker(),
 	}
 
-	var buf strings.Builder
-	w := logx.NewWriter(&buf)
-	o := logx.Reset()
-	logx.SetWriter(w)
-
-	defer func() {
-		logx.Reset()
-		logx.SetWriter(o)
-	}()
+	buf := logtest.NewCollector(t)
 
 	buf.Reset()
 	c.logDuration(context.Background(), "foo", timex.Now(), nil, "bar")
@@ -612,18 +561,66 @@ func Test_DecoratedCollectionLogDuration(t *testing.T) {
 		errors.New("bar"), make(chan int))
 	assert.Contains(t, buf.String(), "foo")
 	assert.Contains(t, buf.String(), "bar")
-	assert.Contains(t, buf.String(), "slowcall")
 
 	buf.Reset()
 	c.logDuration(context.Background(), "foo", timex.Now()-slowThreshold.Load()*2,
 		errors.New("bar"))
 	assert.Contains(t, buf.String(), "foo")
-	assert.Contains(t, buf.String(), "slowcall")
 
 	buf.Reset()
 	c.logDuration(context.Background(), "foo", timex.Now()-slowThreshold.Load()*2, nil)
 	assert.Contains(t, buf.String(), "foo")
 	assert.Contains(t, buf.String(), "slowcall")
+}
+
+func TestAcceptable(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"NilError", nil, true},
+		{"NoDocuments", mongo.ErrNoDocuments, true},
+		{"NilValue", mongo.ErrNilValue, true},
+		{"NilDocument", mongo.ErrNilDocument, true},
+		{"NilCursor", mongo.ErrNilCursor, true},
+		{"EmptySlice", mongo.ErrEmptySlice, true},
+		{"SessionEnded", session.ErrSessionEnded, true},
+		{"NoTransactStarted", session.ErrNoTransactStarted, true},
+		{"TransactInProgress", session.ErrTransactInProgress, true},
+		{"AbortAfterCommit", session.ErrAbortAfterCommit, true},
+		{"AbortTwice", session.ErrAbortTwice, true},
+		{"CommitAfterAbort", session.ErrCommitAfterAbort, true},
+		{"UnackWCUnsupported", session.ErrUnackWCUnsupported, true},
+		{"SnapshotTransaction", session.ErrSnapshotTransaction, true},
+		{"DuplicateKeyError", mongo.WriteException{WriteErrors: []mongo.WriteError{{Code: duplicateKeyCode}}}, true},
+		{"OtherError", errors.New("other error"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, acceptable(tt.err))
+		})
+	}
+}
+
+func TestIsDupKeyError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"NilError", nil, false},
+		{"NonDupKeyError", errors.New("some other error"), false},
+		{"DupKeyError", mongo.WriteException{WriteErrors: []mongo.WriteError{{Code: duplicateKeyCode}}}, true},
+		{"OtherMongoError", mongo.WriteException{WriteErrors: []mongo.WriteError{{Code: 12345}}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isDupKeyError(tt.err))
+		})
+	}
 }
 
 type mockPromise struct {
@@ -649,7 +646,15 @@ func (d *dropBreaker) Allow() (breaker.Promise, error) {
 	return nil, errDummy
 }
 
+func (d *dropBreaker) AllowCtx(_ context.Context) (breaker.Promise, error) {
+	return nil, errDummy
+}
+
 func (d *dropBreaker) Do(_ func() error) error {
+	return nil
+}
+
+func (d *dropBreaker) DoCtx(_ context.Context, _ func() error) error {
 	return nil
 }
 
@@ -657,11 +662,24 @@ func (d *dropBreaker) DoWithAcceptable(_ func() error, _ breaker.Acceptable) err
 	return errDummy
 }
 
-func (d *dropBreaker) DoWithFallback(_ func() error, _ func(err error) error) error {
+func (d *dropBreaker) DoWithAcceptableCtx(_ context.Context, _ func() error, _ breaker.Acceptable) error {
+	return errDummy
+}
+
+func (d *dropBreaker) DoWithFallback(_ func() error, _ breaker.Fallback) error {
 	return nil
 }
 
-func (d *dropBreaker) DoWithFallbackAcceptable(_ func() error, _ func(err error) error,
+func (d *dropBreaker) DoWithFallbackCtx(_ context.Context, _ func() error, _ breaker.Fallback) error {
+	return nil
+}
+
+func (d *dropBreaker) DoWithFallbackAcceptable(_ func() error, _ breaker.Fallback,
 	_ breaker.Acceptable) error {
+	return nil
+}
+
+func (d *dropBreaker) DoWithFallbackAcceptableCtx(_ context.Context, _ func() error,
+	_ breaker.Fallback, _ breaker.Acceptable) error {
 	return nil
 }

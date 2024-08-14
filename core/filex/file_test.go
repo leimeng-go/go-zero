@@ -52,6 +52,7 @@ last line`
 second line
 last line
 `
+	emptyContent = ``
 )
 
 func TestFirstLine(t *testing.T) {
@@ -74,6 +75,31 @@ func TestFirstLineShort(t *testing.T) {
 	assert.Equal(t, "first line", val)
 }
 
+func TestFirstLineError(t *testing.T) {
+	_, err := FirstLine("/tmp/does-not-exist")
+	assert.Error(t, err)
+}
+
+func TestFirstLineEmptyFile(t *testing.T) {
+	filename, err := fs.TempFilenameWithText(emptyContent)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := FirstLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, "", val)
+}
+
+func TestFirstLineWithoutNewline(t *testing.T) {
+	filename, err := fs.TempFilenameWithText(longLine)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := FirstLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, longLine, val)
+}
+
 func TestLastLine(t *testing.T) {
 	filename, err := fs.TempFilenameWithText(text)
 	assert.Nil(t, err)
@@ -86,6 +112,16 @@ func TestLastLine(t *testing.T) {
 
 func TestLastLineWithLastNewline(t *testing.T) {
 	filename, err := fs.TempFilenameWithText(textWithLastNewline)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := LastLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, longLine, val)
+}
+
+func TestLastLineWithoutLastNewline(t *testing.T) {
+	filename, err := fs.TempFilenameWithText(longLine)
 	assert.Nil(t, err)
 	defer os.Remove(filename)
 
@@ -112,4 +148,73 @@ func TestLastLineWithLastNewlineShort(t *testing.T) {
 	val, err := LastLine(filename)
 	assert.Nil(t, err)
 	assert.Equal(t, "last line", val)
+}
+
+func TestLastLineError(t *testing.T) {
+	_, err := LastLine("/tmp/does-not-exist")
+	assert.Error(t, err)
+}
+
+func TestLastLineEmptyFile(t *testing.T) {
+	filename, err := fs.TempFilenameWithText(emptyContent)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := LastLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, "", val)
+}
+
+func TestFirstLineExactlyBufSize(t *testing.T) {
+	content := make([]byte, bufSize)
+	for i := range content {
+		content[i] = 'a'
+	}
+	content[bufSize-1] = '\n' // Ensure there is a newline at the edge
+
+	filename, err := fs.TempFilenameWithText(string(content))
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := FirstLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, string(content[:bufSize-1]), val)
+}
+
+func TestLastLineExactlyBufSize(t *testing.T) {
+	content := make([]byte, bufSize)
+	for i := range content {
+		content[i] = 'a'
+	}
+	content[bufSize-1] = '\n' // Ensure there is a newline at the edge
+
+	filename, err := fs.TempFilenameWithText(string(content))
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := LastLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, string(content[:bufSize-1]), val)
+}
+
+func TestFirstLineLargeFile(t *testing.T) {
+	content := text + text + text + "\n" + "extra"
+	filename, err := fs.TempFilenameWithText(content)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := FirstLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, "first line", val)
+}
+
+func TestLastLineLargeFile(t *testing.T) {
+	content := text + text + text + "\n" + "extra"
+	filename, err := fs.TempFilenameWithText(content)
+	assert.Nil(t, err)
+	defer os.Remove(filename)
+
+	val, err := LastLine(filename)
+	assert.Nil(t, err)
+	assert.Equal(t, "extra", val)
 }

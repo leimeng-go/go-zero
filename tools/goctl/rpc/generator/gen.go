@@ -10,9 +10,9 @@ import (
 )
 
 type ZRpcContext struct {
-	// Sre is the source file of the proto.
+	// Src is the source file of the proto.
 	Src string
-	// ProtoCmd is the command to generate proto files.
+	// ProtocCmd is the command to generate proto files.
 	ProtocCmd string
 	// ProtoGenGrpcDir is the directory to store the generated proto files.
 	ProtoGenGrpcDir string
@@ -28,6 +28,8 @@ type ZRpcContext struct {
 	Output string
 	// Multiple is the flag to indicate whether the proto file is generated in multiple mode.
 	Multiple bool
+	// Whether to generate rpc client
+	IsGenClient bool
 }
 
 // Generate generates a rpc service, through the proto file,
@@ -100,7 +102,9 @@ func (g *Generator) Generate(zctx *ZRpcContext) error {
 		return err
 	}
 
-	err = g.GenCall(dirCtx, proto, g.cfg, zctx)
+	if zctx.IsGenClient {
+		err = g.GenCall(dirCtx, proto, g.cfg, zctx)
+	}
 
 	console.NewColorConsole().MarkDone()
 

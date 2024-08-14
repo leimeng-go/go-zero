@@ -1,6 +1,7 @@
 package tsgen
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,9 +12,15 @@ import (
 	"github.com/zeromicro/go-zero/tools/goctl/util"
 )
 
+const (
+	formTagKey   = "form"
+	pathTagKey   = "path"
+	headerTagKey = "header"
+)
+
 func writeProperty(writer io.Writer, member spec.Member, indent int) error {
 	writeIndent(writer, indent)
-	ty, err := goTypeToTs(member.Type, false)
+	ty, err := genTsType(member, indent)
 	if err != nil {
 		return err
 	}
@@ -34,7 +41,7 @@ func writeProperty(writer io.Writer, member spec.Member, indent int) error {
 	}
 	if len(member.Docs) > 0 {
 		fmt.Fprintf(writer, "%s\n", strings.Join(member.Docs, ""))
-		writeIndent(writer, 1)
+		writeIndent(writer, indent)
 	}
 	_, err = fmt.Fprintf(writer, "%s%s: %s%s\n", name, optionalTag, ty, comment)
 	return err
@@ -44,6 +51,39 @@ func writeIndent(writer io.Writer, indent int) {
 	for i := 0; i < indent; i++ {
 		fmt.Fprint(writer, "\t")
 	}
+}
+
+func genTsType(m spec.Member, indent int) (ty string, err error) {
+	v, ok := m.Type.(spec.NestedStruct)
+	if ok {
+		writer := bytes.NewBuffer(nil)
+		_, err := fmt.Fprintf(writer, "{\n")
+		if err != nil {
+			return "", err
+		}
+
+		if err := writeMembers(writer, v, false, indent+1); err != nil {
+			return "", err
+		}
+
+		writeIndent(writer, indent)
+		_, err = fmt.Fprintf(writer, "}")
+		if err != nil {
+			return "", err
+		}
+		return writer.String(), nil
+	}
+
+	ty, err = goTypeToTs(m.Type, false)
+	if enums := m.GetEnumOptions(); enums != nil {
+		if ty == "string" {
+			for i := range enums {
+				enums[i] = "'" + enums[i] + "'"
+			}
+		}
+		ty = strings.Join(enums, " | ")
+	}
+	return
 }
 
 func goTypeToTs(tp spec.Type, fromPacket bool) (string, error) {
@@ -95,7 +135,7 @@ func primitiveType(tp string) (string, bool) {
 	switch tp {
 	case "string":
 		return "string", true
-	case "int", "int8", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
 		return "number", true
 	case "float", "float32", "float64":
 		return "number", true
@@ -111,7 +151,7 @@ func primitiveType(tp string) (string, bool) {
 
 func writeType(writer io.Writer, tp spec.Type) error {
 	fmt.Fprintf(writer, "export interface %s {\n", util.Title(tp.Name()))
-	if err := writeMembers(writer, tp, false); err != nil {
+	if err := writeMembers(writer, tp, false, 1); err != nil {
 		return err
 	}
 
@@ -129,22 +169,30 @@ func genParamsTypesIfNeed(writer io.Writer, tp spec.Type) error {
 	if len(members) == 0 {
 		return nil
 	}
-	fmt.Fprintf(writer, "\n")
+
 	fmt.Fprintf(writer, "export interface %sParams {\n", util.Title(tp.Name()))
-	if err := writeMembers(writer, tp, true); err != nil {
+	if err := writeTagMembers(writer, tp, formTagKey); err != nil {
 		return err
 	}
-
 	fmt.Fprintf(writer, "}\n")
+
+	if len(definedType.GetTagMembers(headerTagKey)) > 0 {
+		fmt.Fprintf(writer, "export interface %sHeaders {\n", util.Title(tp.Name()))
+		if err := writeTagMembers(writer, tp, headerTagKey); err != nil {
+			return err
+		}
+		fmt.Fprintf(writer, "}\n")
+	}
+
 	return nil
 }
 
-func writeMembers(writer io.Writer, tp spec.Type, isParam bool) error {
+func writeMembers(writer io.Writer, tp spec.Type, isParam bool, indent int) error {
 	definedType, ok := tp.(spec.DefineStruct)
 	if !ok {
 		pointType, ok := tp.(spec.PointerType)
 		if ok {
-			return writeMembers(writer, pointType.Type, isParam)
+			return writeMembers(writer, pointType.Type, isParam, indent)
 		}
 
 		return fmt.Errorf("type %s not supported", tp.Name())
@@ -156,7 +204,34 @@ func writeMembers(writer io.Writer, tp spec.Type, isParam bool) error {
 	}
 	for _, member := range members {
 		if member.IsInline {
-			if err := writeMembers(writer, member.Type, isParam); err != nil {
+			if err := writeMembers(writer, member.Type, isParam, indent); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := writeProperty(writer, member, indent); err != nil {
+			return apiutil.WrapErr(err, " type "+tp.Name())
+		}
+	}
+	return nil
+}
+
+func writeTagMembers(writer io.Writer, tp spec.Type, tagKey string) error {
+	definedType, ok := tp.(spec.DefineStruct)
+	if !ok {
+		pointType, ok := tp.(spec.PointerType)
+		if ok {
+			return writeTagMembers(writer, pointType.Type, tagKey)
+		}
+
+		return fmt.Errorf("type %s not supported", tp.Name())
+	}
+
+	members := definedType.GetTagMembers(tagKey)
+	for _, member := range members {
+		if member.IsInline {
+			if err := writeTagMembers(writer, member.Type, tagKey); err != nil {
 				return err
 			}
 			continue

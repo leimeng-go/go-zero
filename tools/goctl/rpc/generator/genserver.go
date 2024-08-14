@@ -89,10 +89,10 @@ func (g *Generator) genServerGroup(ctx DirContext, proto parser.Proto, cfg *conf
 			}
 		}
 
-		if err = util.With("server").GoFmt(true).Parse(text).SaveTo(map[string]interface{}{
+		if err = util.With("server").GoFmt(true).Parse(text).SaveTo(map[string]any{
 			"head": head,
 			"unimplementedServer": fmt.Sprintf("%s.Unimplemented%sServer", proto.PbPackage,
-				stringx.From(service.Name).ToCamel()),
+				parser.CamelCase(service.Name)),
 			"server":    stringx.From(service.Name).ToCamel(),
 			"imports":   strings.Join(imports.KeysStr(), pathx.NL),
 			"funcs":     strings.Join(funcList, pathx.NL),
@@ -140,10 +140,10 @@ func (g *Generator) genServerInCompatibility(ctx DirContext, proto parser.Proto,
 		}
 	}
 
-	return util.With("server").GoFmt(true).Parse(text).SaveTo(map[string]interface{}{
+	return util.With("server").GoFmt(true).Parse(text).SaveTo(map[string]any{
 		"head": head,
 		"unimplementedServer": fmt.Sprintf("%s.Unimplemented%sServer", proto.PbPackage,
-			stringx.From(service.Name).ToCamel()),
+			parser.CamelCase(service.Name)),
 		"server":    stringx.From(service.Name).ToCamel(),
 		"imports":   strings.Join(imports.KeysStr(), pathx.NL),
 		"funcs":     strings.Join(funcList, pathx.NL),
@@ -175,7 +175,7 @@ func (g *Generator) genFunctions(goPackage string, service parser.Service, multi
 		comment := parser.GetComment(rpc.Doc())
 		streamServer := fmt.Sprintf("%s.%s_%s%s", goPackage, parser.CamelCase(service.Name),
 			parser.CamelCase(rpc.Name), "Server")
-		buffer, err := util.With("func").Parse(text).Execute(map[string]interface{}{
+		buffer, err := util.With("func").Parse(text).Execute(map[string]any{
 			"server":     stringx.From(service.Name).ToCamel(),
 			"logicName":  logicName,
 			"method":     parser.CamelCase(rpc.Name),

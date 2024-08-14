@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"reflect"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -14,29 +15,32 @@ import (
 	"github.com/zeromicro/go-zero/core/sysx"
 )
 
-const callerDepth = 5
+const callerDepth = 4
 
 var (
-	timeFormat = "2006-01-02T15:04:05.000Z07:00"
-	logLevel   uint32
+	timeFormat        = "2006-01-02T15:04:05.000Z07:00"
 	encoding   uint32 = jsonEncodingType
+	// maxContentLength is used to truncate the log content, 0 for not truncating.
+	maxContentLength uint32
 	// use uint32 for atomic operations
 	disableStat uint32
+	logLevel    uint32
 	options     logOptions
 	writer      = new(atomicWriter)
 	setupOnce   sync.Once
 )
 
 type (
-	logEntry struct {
-		Timestamp string      `json:"@timestamp"`
-		Level     string      `json:"level"`
-		Duration  string      `json:"duration,omitempty"`
-		Caller    string      `json:"caller,omitempty"`
-		Content   interface{} `json:"content"`
+	// LogField is a key-value pair that will be added to the log entry.
+	LogField struct {
+		Key   string
+		Value any
 	}
 
-	logEntryWithFields map[string]interface{}
+	// LogOption defines the method to customize the logging.
+	LogOption func(options *logOptions)
+
+	logEntry map[string]any
 
 	logOptions struct {
 		gzipEnabled           bool
@@ -46,16 +50,27 @@ type (
 		maxSize               int
 		rotationRule          string
 	}
-
-	// LogField is a key-value pair that will be added to the log entry.
-	LogField struct {
-		Key   string
-		Value interface{}
-	}
-
-	// LogOption defines the method to customize the logging.
-	LogOption func(options *logOptions)
 )
+
+// AddWriter adds a new writer.
+// If there is already a writer, the new writer will be added to the writer chain.
+// For example, to write logs to both file and console, if there is already a file writer,
+// ```go
+// logx.AddWriter(logx.NewWriter(os.Stdout))
+// ```
+func AddWriter(w Writer) {
+	ow := Reset()
+	if ow == nil {
+		SetWriter(w)
+	} else {
+		// no need to check if the existing writer is a comboWriter,
+		// because it is not common to add more than one writer.
+		// even more than one writer, the behavior is the same.
+		SetWriter(comboWriter{
+			writers: []Writer{ow, w},
+		})
+	}
+}
 
 // Alert alerts v in alert level, and the message is written to error log.
 func Alert(v string) {
@@ -71,8 +86,37 @@ func Close() error {
 	return nil
 }
 
+// Debug writes v into access log.
+func Debug(v ...any) {
+	if shallLog(DebugLevel) {
+		writeDebug(fmt.Sprint(v...))
+	}
+}
+
+// Debugf writes v with format into access log.
+func Debugf(format string, v ...any) {
+	if shallLog(DebugLevel) {
+		writeDebug(fmt.Sprintf(format, v...))
+	}
+}
+
+// Debugv writes v into access log with json content.
+func Debugv(v any) {
+	if shallLog(DebugLevel) {
+		writeDebug(v)
+	}
+}
+
+// Debugw writes msg along with fields into the access log.
+func Debugw(msg string, fields ...LogField) {
+	if shallLog(DebugLevel) {
+		writeDebug(msg, fields...)
+	}
+}
+
 // Disable disables the logging.
 func Disable() {
+	atomic.StoreUint32(&logLevel, disableLevel)
 	writer.Store(nopWriter{})
 }
 
@@ -82,47 +126,59 @@ func DisableStat() {
 }
 
 // Error writes v into error log.
-func Error(v ...interface{}) {
-	errorTextSync(fmt.Sprint(v...))
+func Error(v ...any) {
+	if shallLog(ErrorLevel) {
+		writeError(fmt.Sprint(v...))
+	}
 }
 
 // Errorf writes v with format into error log.
-func Errorf(format string, v ...interface{}) {
-	errorTextSync(fmt.Errorf(format, v...).Error())
+func Errorf(format string, v ...any) {
+	if shallLog(ErrorLevel) {
+		writeError(fmt.Errorf(format, v...).Error())
+	}
 }
 
 // ErrorStack writes v along with call stack into error log.
-func ErrorStack(v ...interface{}) {
-	// there is newline in stack string
-	stackSync(fmt.Sprint(v...))
+func ErrorStack(v ...any) {
+	if shallLog(ErrorLevel) {
+		// there is newline in stack string
+		writeStack(fmt.Sprint(v...))
+	}
 }
 
 // ErrorStackf writes v along with call stack in format into error log.
-func ErrorStackf(format string, v ...interface{}) {
-	// there is newline in stack string
-	stackSync(fmt.Sprintf(format, v...))
+func ErrorStackf(format string, v ...any) {
+	if shallLog(ErrorLevel) {
+		// there is newline in stack string
+		writeStack(fmt.Sprintf(format, v...))
+	}
 }
 
 // Errorv writes v into error log with json content.
 // No call stack attached, because not elegant to pack the messages.
-func Errorv(v interface{}) {
-	errorAnySync(v)
+func Errorv(v any) {
+	if shallLog(ErrorLevel) {
+		writeError(v)
+	}
 }
 
-// Errorw writes msg along with fields into error log.
+// Errorw writes msg along with fields into the error log.
 func Errorw(msg string, fields ...LogField) {
-	errorFieldsSync(msg, fields...)
+	if shallLog(ErrorLevel) {
+		writeError(msg, fields...)
+	}
 }
 
 // Field returns a LogField for the given key and value.
-func Field(key string, value interface{}) LogField {
+func Field(key string, value any) LogField {
 	switch val := value.(type) {
 	case error:
-		return LogField{Key: key, Value: val.Error()}
+		return LogField{Key: key, Value: encodeError(val)}
 	case []error:
 		var errs []string
 		for _, err := range val {
-			errs = append(errs, err.Error())
+			errs = append(errs, encodeError(err))
 		}
 		return LogField{Key: key, Value: errs}
 	case time.Duration:
@@ -140,11 +196,11 @@ func Field(key string, value interface{}) LogField {
 		}
 		return LogField{Key: key, Value: times}
 	case fmt.Stringer:
-		return LogField{Key: key, Value: val.String()}
+		return LogField{Key: key, Value: encodeStringer(val)}
 	case []fmt.Stringer:
 		var strs []string
 		for _, str := range val {
-			strs = append(strs, str.String())
+			strs = append(strs, encodeStringer(str))
 		}
 		return LogField{Key: key, Value: strs}
 	default:
@@ -153,23 +209,31 @@ func Field(key string, value interface{}) LogField {
 }
 
 // Info writes v into access log.
-func Info(v ...interface{}) {
-	infoTextSync(fmt.Sprint(v...))
+func Info(v ...any) {
+	if shallLog(InfoLevel) {
+		writeInfo(fmt.Sprint(v...))
+	}
 }
 
 // Infof writes v with format into access log.
-func Infof(format string, v ...interface{}) {
-	infoTextSync(fmt.Sprintf(format, v...))
+func Infof(format string, v ...any) {
+	if shallLog(InfoLevel) {
+		writeInfo(fmt.Sprintf(format, v...))
+	}
 }
 
 // Infov writes v into access log with json content.
-func Infov(v interface{}) {
-	infoAnySync(v)
+func Infov(v any) {
+	if shallLog(InfoLevel) {
+		writeInfo(v)
+	}
 }
 
-// Infow writes msg along with fields into access log.
+// Infow writes msg along with fields into the access log.
 func Infow(msg string, fields ...LogField) {
-	infoFieldsSync(msg, fields...)
+	if shallLog(InfoLevel) {
+		writeInfo(msg, fields...)
+	}
 }
 
 // Must checks if err is nil, otherwise logs the error and exits.
@@ -178,10 +242,15 @@ func Must(err error) {
 		return
 	}
 
-	msg := err.Error()
+	msg := fmt.Sprintf("%+v\n\n%s", err.Error(), debug.Stack())
 	log.Print(msg)
 	getWriter().Severe(msg)
-	os.Exit(1)
+
+	if ExitOnFatal.True() {
+		os.Exit(1)
+	} else {
+		panic(msg)
+	}
 }
 
 // MustSetup sets up logging with given config c. It exits on error.
@@ -201,22 +270,31 @@ func SetLevel(level uint32) {
 
 // SetWriter sets the logging writer. It can be used to customize the logging.
 func SetWriter(w Writer) {
-	writer.Store(w)
+	if atomic.LoadUint32(&logLevel) != disableLevel {
+		writer.Store(w)
+	}
 }
 
-// SetUp sets up the logx. If already set up, just return nil.
-// we allow SetUp to be called multiple times, because for example
+// SetUp sets up the logx.
+// If already set up, return nil.
+// We allow SetUp to be called multiple times, because, for example,
 // we need to allow different service frameworks to initialize logx respectively.
 func SetUp(c LogConf) (err error) {
-	// Just ignore the subsequent SetUp calls.
+	// Ignore the later SetUp calls.
 	// Because multiple services in one process might call SetUp respectively.
 	// Need to wait for the first caller to complete the execution.
 	setupOnce.Do(func() {
 		setupLogLevel(c)
 
+		if !c.Stat {
+			DisableStat()
+		}
+
 		if len(c.TimeFormat) > 0 {
 			timeFormat = c.TimeFormat
 		}
+
+		atomic.StoreUint32(&maxContentLength, c.MaxContentLength)
 
 		switch c.Encoding {
 		case plainEncoding:
@@ -239,43 +317,59 @@ func SetUp(c LogConf) (err error) {
 }
 
 // Severe writes v into severe log.
-func Severe(v ...interface{}) {
-	severeSync(fmt.Sprint(v...))
+func Severe(v ...any) {
+	if shallLog(SevereLevel) {
+		writeSevere(fmt.Sprint(v...))
+	}
 }
 
 // Severef writes v with format into severe log.
-func Severef(format string, v ...interface{}) {
-	severeSync(fmt.Sprintf(format, v...))
+func Severef(format string, v ...any) {
+	if shallLog(SevereLevel) {
+		writeSevere(fmt.Sprintf(format, v...))
+	}
 }
 
 // Slow writes v into slow log.
-func Slow(v ...interface{}) {
-	slowTextSync(fmt.Sprint(v...))
+func Slow(v ...any) {
+	if shallLog(ErrorLevel) {
+		writeSlow(fmt.Sprint(v...))
+	}
 }
 
 // Slowf writes v with format into slow log.
-func Slowf(format string, v ...interface{}) {
-	slowTextSync(fmt.Sprintf(format, v...))
+func Slowf(format string, v ...any) {
+	if shallLog(ErrorLevel) {
+		writeSlow(fmt.Sprintf(format, v...))
+	}
 }
 
 // Slowv writes v into slow log with json content.
-func Slowv(v interface{}) {
-	slowAnySync(v)
+func Slowv(v any) {
+	if shallLog(ErrorLevel) {
+		writeSlow(v)
+	}
 }
 
 // Sloww writes msg along with fields into slow log.
 func Sloww(msg string, fields ...LogField) {
-	slowFieldsSync(msg, fields...)
+	if shallLog(ErrorLevel) {
+		writeSlow(msg, fields...)
+	}
 }
 
 // Stat writes v into stat log.
-func Stat(v ...interface{}) {
-	statSync(fmt.Sprint(v...))
+func Stat(v ...any) {
+	if shallLogStat() && shallLog(InfoLevel) {
+		writeStat(fmt.Sprint(v...))
+	}
 }
 
 // Statf writes v with format into stat log.
-func Statf(format string, v ...interface{}) {
-	statSync(fmt.Sprintf(format, v...))
+func Statf(format string, v ...any) {
+	if shallLogStat() && shallLog(InfoLevel) {
+		writeStat(fmt.Sprintf(format, v...))
+	}
 }
 
 // WithCooldownMillis customizes logging on writing call stack interval.
@@ -320,44 +414,57 @@ func WithRotation(r string) LogOption {
 	}
 }
 
+func addCaller(fields ...LogField) []LogField {
+	return append(fields, Field(callerKey, getCaller(callerDepth)))
+}
+
 func createOutput(path string) (io.WriteCloser, error) {
 	if len(path) == 0 {
 		return nil, ErrLogPathNotSet
 	}
 
+	var rule RotateRule
 	switch options.rotationRule {
 	case sizeRotationRule:
-		return NewLogger(path, NewSizeLimitRotateRule(path, backupFileDelimiter, options.keepDays,
-			options.maxSize, options.maxBackups, options.gzipEnabled), options.gzipEnabled)
+		rule = NewSizeLimitRotateRule(path, backupFileDelimiter, options.keepDays, options.maxSize,
+			options.maxBackups, options.gzipEnabled)
 	default:
-		return NewLogger(path, DefaultRotateRule(path, backupFileDelimiter, options.keepDays,
-			options.gzipEnabled), options.gzipEnabled)
+		rule = DefaultRotateRule(path, backupFileDelimiter, options.keepDays, options.gzipEnabled)
 	}
+
+	return NewLogger(path, rule, options.gzipEnabled)
 }
 
-func errorAnySync(v interface{}) {
-	if shallLog(ErrorLevel) {
-		getWriter().Error(v)
-	}
+func encodeError(err error) (ret string) {
+	return encodeWithRecover(err, func() string {
+		return err.Error()
+	})
 }
 
-func errorFieldsSync(content string, fields ...LogField) {
-	if shallLog(ErrorLevel) {
-		getWriter().Error(content, fields...)
-	}
+func encodeStringer(v fmt.Stringer) (ret string) {
+	return encodeWithRecover(v, func() string {
+		return v.String()
+	})
 }
 
-func errorTextSync(msg string) {
-	if shallLog(ErrorLevel) {
-		getWriter().Error(msg)
-	}
+func encodeWithRecover(arg any, fn func() string) (ret string) {
+	defer func() {
+		if err := recover(); err != nil {
+			if v := reflect.ValueOf(arg); v.Kind() == reflect.Ptr && v.IsNil() {
+				ret = nilAngleString
+			} else {
+				ret = fmt.Sprintf("panic: %v", err)
+			}
+		}
+	}()
+
+	return fn()
 }
 
 func getWriter() Writer {
 	w := writer.Load()
 	if w == nil {
-		w = newConsoleWriter()
-		writer.Store(w)
+		w = writer.StoreIfNil(newConsoleWriter())
 	}
 
 	return w
@@ -369,26 +476,10 @@ func handleOptions(opts []LogOption) {
 	}
 }
 
-func infoAnySync(val interface{}) {
-	if shallLog(InfoLevel) {
-		getWriter().Info(val)
-	}
-}
-
-func infoFieldsSync(content string, fields ...LogField) {
-	if shallLog(InfoLevel) {
-		getWriter().Info(content, fields...)
-	}
-}
-
-func infoTextSync(msg string) {
-	if shallLog(InfoLevel) {
-		getWriter().Info(msg)
-	}
-}
-
 func setupLogLevel(c LogConf) {
 	switch c.Level {
+	case levelDebug:
+		SetLevel(DebugLevel)
 	case levelInfo:
 		SetLevel(InfoLevel)
 	case levelError:
@@ -421,12 +512,6 @@ func setupWithVolume(c LogConf) error {
 	return setupWithFiles(c)
 }
 
-func severeSync(msg string) {
-	if shallLog(SevereLevel) {
-		getWriter().Severe(fmt.Sprintf("%s\n%s", msg, string(debug.Stack())))
-	}
-}
-
 func shallLog(level uint32) bool {
 	return atomic.LoadUint32(&logLevel) <= level
 }
@@ -435,32 +520,58 @@ func shallLogStat() bool {
 	return atomic.LoadUint32(&disableStat) == 0
 }
 
-func slowAnySync(v interface{}) {
-	if shallLog(ErrorLevel) {
-		getWriter().Slow(v)
-	}
+// writeDebug writes v into debug log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeDebug(val any, fields ...LogField) {
+	getWriter().Debug(val, addCaller(fields...)...)
 }
 
-func slowFieldsSync(content string, fields ...LogField) {
-	if shallLog(ErrorLevel) {
-		getWriter().Slow(content, fields...)
-	}
+// writeError writes v into the error log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeError(val any, fields ...LogField) {
+	getWriter().Error(val, addCaller(fields...)...)
 }
 
-func slowTextSync(msg string) {
-	if shallLog(ErrorLevel) {
-		getWriter().Slow(msg)
-	}
+// writeInfo writes v into info log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeInfo(val any, fields ...LogField) {
+	getWriter().Info(val, addCaller(fields...)...)
 }
 
-func stackSync(msg string) {
-	if shallLog(ErrorLevel) {
-		getWriter().Stack(fmt.Sprintf("%s\n%s", msg, string(debug.Stack())))
-	}
+// writeSevere writes v into severe log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeSevere(msg string) {
+	getWriter().Severe(fmt.Sprintf("%s\n%s", msg, string(debug.Stack())))
 }
 
-func statSync(msg string) {
-	if shallLogStat() && shallLog(InfoLevel) {
-		getWriter().Stat(msg)
-	}
+// writeSlow writes v into slow log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeSlow(val any, fields ...LogField) {
+	getWriter().Slow(val, addCaller(fields...)...)
+}
+
+// writeStack writes v into stack log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeStack(msg string) {
+	getWriter().Stack(fmt.Sprintf("%s\n%s", msg, string(debug.Stack())))
+}
+
+// writeStat writes v into the stat log.
+// Not checking shallLog here is for performance consideration.
+// If we check shallLog here, the fmt.Sprint might be called even if the log level is not enabled.
+// The caller should check shallLog before calling this function.
+func writeStat(msg string) {
+	getWriter().Stat(msg, addCaller()...)
 }

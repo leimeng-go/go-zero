@@ -1,8 +1,6 @@
 package ast
 
-import (
-	"github.com/zeromicro/go-zero/tools/goctl/api/parser/g4/gen/api"
-)
+import "github.com/zeromicro/go-zero/tools/goctl/api/parser/g4/gen/api"
 
 // SyntaxExpr describes syntax for api
 type SyntaxExpr struct {
@@ -14,7 +12,7 @@ type SyntaxExpr struct {
 }
 
 // VisitSyntaxLit implements from api.BaseApiParserVisitor
-func (v *ApiVisitor) VisitSyntaxLit(ctx *api.SyntaxLitContext) interface{} {
+func (v *ApiVisitor) VisitSyntaxLit(ctx *api.SyntaxLitContext) any {
 	syntax := v.newExprWithToken(ctx.GetSyntaxToken())
 	assign := v.newExprWithToken(ctx.GetAssign())
 	version := v.newExprWithToken(ctx.GetVersion())
@@ -34,7 +32,7 @@ func (s *SyntaxExpr) Format() error {
 }
 
 // Equal compares whether the element literals in two SyntaxExpr are equal
-func (s *SyntaxExpr) Equal(v interface{}) bool {
+func (s *SyntaxExpr) Equal(v any) bool {
 	if v == nil {
 		return false
 	}

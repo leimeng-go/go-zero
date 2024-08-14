@@ -30,6 +30,21 @@ func (t DefineStruct) Documents() []string {
 	return t.Docs
 }
 
+// Name returns a structure string, such as User
+func (t NestedStruct) Name() string {
+	return t.RawName
+}
+
+// Comments returns the comments of struct
+func (t NestedStruct) Comments() []string {
+	return nil
+}
+
+// Documents returns the documents of struct
+func (t NestedStruct) Documents() []string {
+	return t.Docs
+}
+
 // Name returns a map string, such as map[string]int
 func (t MapType) Name() string {
 	return t.RawName
@@ -75,7 +90,7 @@ func (t PointerType) Documents() []string {
 	return nil
 }
 
-// Name returns a interface string, Its fixed value is interface{}
+// Name returns an interface string, Its fixed value is any
 func (t InterfaceType) Name() string {
 	return t.RawName
 }

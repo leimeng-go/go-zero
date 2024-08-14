@@ -5,7 +5,6 @@ import (
 	"go/build"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +39,7 @@ func TestRpcGenerate(t *testing.T) {
 	// case go path
 	t.Run("GOPATH", func(t *testing.T) {
 		ctx := &ZRpcContext{
-			Src:        "./test.proto",
+			Src: "./test.proto",
 			ProtocCmd: fmt.Sprintf("protoc -I=%s test.proto --go_out=%s --go_opt=Mbase/common.proto=./base --go-grpc_out=%s",
 				common, projectDir, projectDir),
 			IsGooglePlugin: true,
@@ -51,12 +50,7 @@ func TestRpcGenerate(t *testing.T) {
 		err = g.Generate(ctx)
 		assert.Nil(t, err)
 		_, err = execx.Run("go test "+projectName, projectDir)
-		if err != nil {
-			assert.True(t, func() bool {
-				return strings.Contains(err.Error(),
-					"not in GOROOT") || strings.Contains(err.Error(), "cannot find package")
-			}())
-		}
+		assert.Error(t, err)
 	})
 
 	// case go mod
@@ -71,7 +65,7 @@ func TestRpcGenerate(t *testing.T) {
 
 		projectDir = filepath.Join(workDir, projectName)
 		ctx := &ZRpcContext{
-			Src:        "./test.proto",
+			Src: "./test.proto",
 			ProtocCmd: fmt.Sprintf("protoc -I=%s test.proto --go_out=%s --go_opt=Mbase/common.proto=./base --go-grpc_out=%s",
 				common, projectDir, projectDir),
 			IsGooglePlugin: true,

@@ -8,22 +8,15 @@
 
 [![Go](https://github.com/zeromicro/go-zero/workflows/Go/badge.svg?branch=master)](https://github.com/zeromicro/go-zero/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/zeromicro/go-zero)](https://goreportcard.com/report/github.com/zeromicro/go-zero)
-[![goproxy](https://goproxy.cn/stats/github.com/tal-tech/go-zero/badges/download-count.svg)](https://goproxy.cn/stats/github.com/tal-tech/go-zero/badges/download-count.svg)
+[![goproxy](https://goproxy.cn/stats/github.com/zeromicro/go-zero/badges/download-count.svg)](https://goproxy.cn/stats/github.com/zeromicro/go-zero/badges/download-count.svg)
 [![codecov](https://codecov.io/gh/zeromicro/go-zero/branch/master/graph/badge.svg)](https://codecov.io/gh/zeromicro/go-zero)
 [![Release](https://img.shields.io/github/v/release/zeromicro/go-zero.svg?style=flat-square)](https://github.com/zeromicro/go-zero)
 [![Go Reference](https://pkg.go.dev/badge/github.com/zeromicro/go-zero.svg)](https://pkg.go.dev/github.com/zeromicro/go-zero)
 [![Awesome Go](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/avelino/awesome-go)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+<a href="https://trendshift.io/repositories/3263" target="_blank"><img src="https://trendshift.io/api/badge/repositories/3263" alt="zeromicro%2Fgo-zero | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 <a href="https://www.producthunt.com/posts/go-zero?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-go&#0045;zero" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=334030&theme=light" alt="go&#0045;zero - A&#0032;web&#0032;&#0038;&#0032;rpc&#0032;framework&#0032;written&#0032;in&#0032;Go&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-
-> ***注意：***
->
-> 从 v1.3.0 之前版本升级请执行以下命令：
-> 
-> `GOPROXY=https://goproxy.cn/,direct go install github.com/zeromicro/go-zero/tools/goctl@latest`
-> 
-> `goctl migrate —verbose —version v1.3.5`
 
 ## 0. go-zero 介绍
 
@@ -119,34 +112,25 @@ GO111MODULE=on GOPROXY=https://goproxy.cn/,direct go get -u github.com/zeromicro
     `goctl` 读作 `go control`，不要读成 `go C-T-L`。`goctl` 的意思是不要被代码控制，而是要去控制它。其中的 `go` 不是指 `golang`。在设计 `goctl` 之初，我就希望通过 `工具` 来解放我们的双手👈
 
     ```shell
-    # Go 1.15 及之前版本
-    GO111MODULE=on GOPROXY=https://goproxy.cn/,direct go get -u github.com/zeromicro/go-zero/tools/goctl@latest
-    
-    # Go 1.16 及以后版本
+    # Go
     GOPROXY=https://goproxy.cn/,direct go install github.com/zeromicro/go-zero/tools/goctl@latest
     
     # For Mac
     brew install goctl
-
-    # docker for amd64 architecture
+    
+    # docker for all platforms
     docker pull kevinwan/goctl
-    # run goctl like
-    docker run --rm -it -v `pwd`:/app kevinwan/goctl goctl --help
-
-    # docker for arm64 (M1) architecture
-    docker pull kevinwan/goctl:latest-arm64
-    # run goctl like
-    docker run --rm -it -v `pwd`:/app kevinwan/goctl:latest-arm64 goctl --help
+    # run goctl
+    docker run --rm -it -v `pwd`:/app kevinwan/goctl --help
     ```
-
-    确保 goctl 可执行
-
+    
+    确保 goctl 可执行，并且在 $PATH 环境变量里。
+    
 2. 快速生成 api 服务
 
     ```shell
     goctl api new greet
     cd greet
-    go mod init
     go mod tidy
     go run greet.go -f etc/greet-api.yaml
     ```
@@ -200,7 +184,7 @@ GO111MODULE=on GOPROXY=https://goproxy.cn/,direct go get -u github.com/zeromicro
   * [快速构建高并发微服务 - 多 RPC 版](https://github.com/zeromicro/zero-doc/blob/main/docs/zero/bookstore.md)
   * [goctl 使用帮助](https://github.com/zeromicro/zero-doc/blob/main/doc/goctl.md)
   * [Examples](https://github.com/zeromicro/zero-examples)
-  
+
 * 精选 `goctl` 插件
 
   | 插件    | 用途  |
@@ -288,14 +272,41 @@ go-zero 已被许多公司用于生产部署，接入场景如在线教育、电
 >73. 武汉沃柒科技有限公司(茄椒)
 >74. 驭势科技
 >75. 叮当跳动
+>76. Keep
+>77. simba innovation
+>78. ZeroCMF
+>79. 安徽寻梦投资发展集团
+>80. 广州腾思信息科技有限公司
+>81. 广州机智云物联网科技有限公司
+>82. 厦门亿联网络技术股份有限公司
+>83. 北京麦芽田网络科技有限公司
+>84. 佛山市振联科技有限公司
+>85. 苏州智言信息科技有限公司
+>86. 中国移动上海产业研究院
+>87. 天枢数链（浙江）科技有限公司
+>88. 北京娱人共享智能科技有限公司
+>89. 北京数智方科技有限公司
+>90. 元匠科技
+>91. 宁波甬风信息科技有限公司
+>92. 深圳市万佳安物联科技股份有限公司
+>93. 武侯区编程之美软件开发工作室
+>94. 西安交通大学智慧能源与碳中和研究中心
+>95. 成都创软科技有限责任公司
+>96. Sonderbase Technologies
+>97. 上海荣时信息科技有限公司
+>98. 上海同犀智能科技有限公司
+>99. 新华三技术有限公司
+>100. 上海邑脉科技有限公司
+>101. 上海巨瓴科技有限公司
+>102. 深圳市兴海物联科技有限公司
 
 如果贵公司也已使用 go-zero，欢迎在 [登记地址](https://github.com/zeromicro/go-zero/issues/602) 登记，仅仅为了推广，不做其它用途。
 
 ## 10. CNCF 云原生技术全景图
 
 <p float="left">
-<img src="https://landscape.cncf.io/images/left-logo.svg" width="150"/>&nbsp;&nbsp;&nbsp;
-<img src="https://landscape.cncf.io/images/right-logo.svg" width="200"/>
+<img src="https://raw.githubusercontent.com/zeromicro/zero-doc/main/doc/images/cncf-logo.svg" width="200"/>&nbsp;&nbsp;&nbsp;
+<img src="https://raw.githubusercontent.com/zeromicro/zero-doc/main/doc/images/cncf-landscape-logo.svg" width="150"/>
 </p>
 
 go-zero 收录在 [CNCF Cloud Native 云原生技术全景图](https://landscape.cncf.io/?selected=go-zero)。
@@ -318,8 +329,8 @@ go-zero 收录在 [CNCF Cloud Native 云原生技术全景图](https://landscape
 
 <img src="https://raw.githubusercontent.com/zeromicro/zero-doc/main/doc/images/wechat.jpg" alt="wechat" width="300" />
 
-## 13. 赞助一下👍
+## 13. 知识星球
 
-如果觉得项目有帮助，可以请作者喝杯咖啡 🍹
+官方团队运营的知识星球
 
-<img src="https://raw.githubusercontent.com/zeromicro/zero-doc/main/doc/images/sponsor.png" alt="wechat" width="300" />
+<img src="https://raw.githubusercontent.com/zeromicro/zero-doc/main/doc/images/zsxq.jpg" alt="知识星球" width="300" />
