@@ -91,13 +91,15 @@ func DisableLog() {
 	logEnabled.Set(false)
 }
 
+// NewAdaptiveShedder 返回一个自适应负载控制器，并通过配置选线实现自定义
 // NewAdaptiveShedder returns an adaptive shedder.
 // opts can be used to customize the Shedder.
 func NewAdaptiveShedder(opts ...ShedderOption) Shedder {
+	// 如果未激活则返回空的自适应负载控制器
 	if !enabled.True() {
 		return newNopShedder()
 	}
-
+    // 定义默认的相关参数，滑动窗口大小，桶的数量，以及cpu阀值
 	options := shedderOptions{
 		window:       defaultWindow,
 		buckets:      defaultBuckets,

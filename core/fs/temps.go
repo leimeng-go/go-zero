@@ -6,6 +6,7 @@ import (
 	"github.com/zeromicro/go-zero/core/hash"
 )
 
+// TempFileWithText 根据给定的内容创建临时文件
 // TempFileWithText creates the temporary file with the given content,
 // and returns the opened *os.File instance.
 // The file is kept as open, the caller should close the file handle,

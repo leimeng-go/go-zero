@@ -14,10 +14,10 @@ type (
 		Add(v T)
 		Reset()
 	}
-
+    // Numerical 是一个类型约束，表示`T`必须是符合`mathx.Numerical` 约束的类型
 	// Numerical is the interface that restricts the numerical type.
 	Numerical = mathx.Numerical
-
+    // RollingWIndowOption 
 	// RollingWindowOption let callers customize the RollingWindow.
 	RollingWindowOption[T Numerical, B BucketInterface[T]] func(rollingWindow *RollingWindow[T, B])
 

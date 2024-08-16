@@ -37,13 +37,13 @@ type engine struct {
 	priorityShedder      load.Shedder
 	tlsConfig            *tls.Config
 }
-
+// newEngine 根据c配置出创建rest实例
 func newEngine(c RestConf) *engine {
 	svr := &engine{
 		conf:    c,
 		timeout: time.Duration(c.Timeout) * time.Millisecond,
 	}
-
+    // CpuThreshold 熔断设置
 	if c.CpuThreshold > 0 {
 		svr.shedder = load.NewAdaptiveShedder(load.WithCpuThreshold(c.CpuThreshold))
 		svr.priorityShedder = load.NewAdaptiveShedder(load.WithCpuThreshold(
