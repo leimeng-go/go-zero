@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
+// middleware构造器
 // A constructor for middleware
 // that writes its own "tag" into the RW and does nothing else.
 // Useful in checking if a chain is behaving in the right order.
@@ -77,7 +77,7 @@ func TestThenFuncConstructsHandlerFunc(t *testing.T) {
 	assert.Equal(t, reflect.TypeOf((http.HandlerFunc)(nil)), reflect.TypeOf(chained),
 		"ThenFunc does not construct HandlerFunc")
 }
-
+// 测试正确的顺序请求
 func TestThenOrdersHandlersCorrectly(t *testing.T) {
 	t1 := tagMiddleware("t1\n")
 	t2 := tagMiddleware("t2\n")
@@ -96,7 +96,7 @@ func TestThenOrdersHandlersCorrectly(t *testing.T) {
 	assert.Equal(t, "t1\nt2\nt3\napp\n", w.Body.String(),
 		"Then does not order handlers correctly")
 }
-
+// TestAppendAddsHandlersCorrectly 测试append
 func TestAppendAddsHandlersCorrectly(t *testing.T) {
 	c := New(tagMiddleware("t1\n"), tagMiddleware("t2\n"))
 	c = c.Append(tagMiddleware("t3\n"), tagMiddleware("t4\n"))
@@ -107,10 +107,10 @@ func TestAppendAddsHandlersCorrectly(t *testing.T) {
 	assert.Nil(t, err)
 
 	h.ServeHTTP(w, r)
-	assert.Equal(t, "t1\nt2\nt3\nt4\napp\n", w.Body.String(),
+	assert.Equal(t, "t1\nt2\nt3\nt4\napp1\n", w.Body.String(),
 		"Append does not add handlers correctly")
 }
-
+// TestExtendAddsHandlersCorrectly 测试prepend
 func TestExtendAddsHandlersCorrectly(t *testing.T) {
 	c := New(tagMiddleware("t3\n"), tagMiddleware("t4\n"))
 	c = c.Prepend(tagMiddleware("t1\n"), tagMiddleware("t2\n"))
