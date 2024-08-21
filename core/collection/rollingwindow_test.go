@@ -24,9 +24,9 @@ func TestNewRollingWindow(t *testing.T) {
 
 func TestRollingWindowAdd(t *testing.T) {
 	const size = 3
-	r := NewRollingWindow[float64, *Bucket[float64]](func() *Bucket[float64] {
+	r := NewRollingWindow[float64, *Bucket[float64]](func() *Bucket[float64] { 
 		return new(Bucket[float64])
-	}, size, duration)
+	}, size, duration) 
 	listBuckets := func() []float64 {
 		var buckets []float64
 		r.Reduce(func(b *Bucket[float64]) {

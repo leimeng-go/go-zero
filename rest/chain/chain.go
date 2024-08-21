@@ -20,7 +20,7 @@ type (
 	// Middleware is an HTTP middleware.
 	Middleware func(http.Handler) http.Handler
 
-	// chain acts as a list of http.Handler middlewares.
+	// chain acts as a list of http.Handler middlewares. 
 	// chain is effectively immutable:
 	// once created, it will always hold
 	// the same set of middlewares in the same order.

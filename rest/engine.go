@@ -46,6 +46,7 @@ func newEngine(c RestConf) *engine {
     // CpuThreshold 熔断设置
 	if c.CpuThreshold > 0 {
 		svr.shedder = load.NewAdaptiveShedder(load.WithCpuThreshold(c.CpuThreshold))
+		// 优先级请求处理    
 		svr.priorityShedder = load.NewAdaptiveShedder(load.WithCpuThreshold(
 			(c.CpuThreshold + topCpuUsage) >> 1))
 	}
@@ -309,10 +310,10 @@ func (ng *engine) start(router httpx.Router, opts ...StartOption) error {
 	if err := ng.bindRoutes(router); err != nil {
 		return err
 	}
-
+    // 确保用户定义的选项覆盖默认选项
 	// make sure user defined options overwrite default options
 	opts = append([]StartOption{ng.withTimeout()}, opts...)
-
+    // 当没有配置证书文件时，使用internal 启动http服务
 	if len(ng.conf.CertFile) == 0 && len(ng.conf.KeyFile) == 0 {
 		return internal.StartHttp(ng.conf.Host, ng.conf.Port, router, opts...)
 	}

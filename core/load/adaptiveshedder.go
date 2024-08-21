@@ -72,7 +72,7 @@ type (
 		cpuThreshold    int64
 		windowScale     float64
 		flying          int64
-		avgFlying       float64
+		avgFlying        float64
 		avgFlyingLock   syncx.SpinLock
 		overloadTime    *syncx.AtomicDuration
 		droppedRecently *syncx.AtomicBool
@@ -117,7 +117,9 @@ func NewAdaptiveShedder(opts ...ShedderOption) Shedder {
 		windowScale:     float64(time.Second) / float64(bucketDuration) / millisecondsPerSecond,
 		overloadTime:    syncx.NewAtomicDuration(),
 		droppedRecently: syncx.NewAtomicBool(),
+		//一段时间的请求成功数
 		passCounter:     collection.NewRollingWindow[int64, *collection.Bucket[int64]](newBucket, options.buckets, bucketDuration, collection.IgnoreCurrentBucket[int64, *collection.Bucket[int64]]()),
+		// 请求响应时间
 		rtCounter:       collection.NewRollingWindow[int64, *collection.Bucket[int64]](newBucket, options.buckets, bucketDuration, collection.IgnoreCurrentBucket[int64, *collection.Bucket[int64]]()),
 	}
 }

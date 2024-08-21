@@ -10,19 +10,20 @@ import (
 	"github.com/zeromicro/go-zero/core/proc"
 	"github.com/zeromicro/go-zero/internal/health"
 )
-
+// probeNamePrefix 是rest服务名称的前缀
 const probeNamePrefix = "rest"
 
 // StartOption defines the method to customize http.Server.
 type StartOption func(svr *http.Server)
 
+// StartHttp 启动一个http服务
 // StartHttp starts a http server.
 func StartHttp(host string, port int, handler http.Handler, opts ...StartOption) error {
 	return start(host, port, handler, func(svr *http.Server) error {
 		return svr.ListenAndServe()
 	}, opts...)
 }
-
+// StartHttps 启动一个https服务
 // StartHttps starts a https server.
 func StartHttps(host string, port int, certFile, keyFile string, handler http.Handler,
 	opts ...StartOption) error {

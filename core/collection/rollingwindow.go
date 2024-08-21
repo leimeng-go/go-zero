@@ -25,7 +25,7 @@ type (
 	RollingWindow[T Numerical, B BucketInterface[T]] struct {
 		lock          sync.RWMutex
 		size          int
-		win           *window[T, B]
+		win           *window[T, B]    
 		interval      time.Duration
 		offset        int
 		ignoreCurrent bool
@@ -128,7 +128,7 @@ type window[T Numerical, B BucketInterface[T]] struct {
 	size    int
 }
 
-func newWindow[T Numerical, B BucketInterface[T]](newBucket func() B, size int) *window[T, B] {
+func  newWindow[T Numerical, B BucketInterface[T]](newBucket func() B, size int) *window[T, B] {
 	buckets := make([]B, size)
 	for i := 0; i < size; i++ {
 		buckets[i] = newBucket()

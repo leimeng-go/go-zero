@@ -206,7 +206,7 @@ Verbose: true
 	for _, yaml := range yamls {
 		yaml := yaml
 		for _, route := range routes {
-			route := route
+			route := route 
 			t.Run(fmt.Sprintf("%s-%v", yaml, route.routes), func(t *testing.T) {
 				var cnf RestConf
 				assert.Nil(t, conf.LoadFromYamlBytes([]byte(yaml), &cnf))
