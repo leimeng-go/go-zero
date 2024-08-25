@@ -42,6 +42,7 @@ func start(host string, port int, handler http.Handler, run func(svr *http.Serve
 	for _, opt := range opts {
 		opt(server)
 	}
+	//创建组件健康管理器
 	healthManager := health.NewHealthManager(fmt.Sprintf("%s-%s:%d", probeNamePrefix, host, port))
 
 	waitForCalled := proc.AddShutdownListener(func() {

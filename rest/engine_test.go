@@ -216,7 +216,9 @@ Verbose: true
 						next http.Handler, strict bool, code int) {
 					})
 				}
+				// 添加路由
 				ng.addRoutes(route)
+				// 添加中间件
 				ng.use(func(next http.HandlerFunc) http.HandlerFunc {
 					return func(w http.ResponseWriter, r *http.Request) {
 						next.ServeHTTP(w, r)

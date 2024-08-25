@@ -24,7 +24,7 @@ var (
 	shutdownListeners        = new(listenerManager)
 	delayTimeBeforeForceQuit = waitTime
 )
-
+// AddShutdownListener 添加一个关闭监视器函数，这个函数会在进程关闭前被调用
 // AddShutdownListener adds fn as a shutdown listener.
 // The returned func can be used to wait for fn getting called.
 func AddShutdownListener(fn func()) (waitForCalled func()) {

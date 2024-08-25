@@ -8,19 +8,24 @@ import (
 
 	"github.com/zeromicro/go-zero/core/syncx"
 )
-
+// defaultHealthManager 是一个全局的合并健康管理器
 // defaultHealthManager is global comboHealthManager.
 var defaultHealthManager = newComboHealthManager()
 
 type (
+	// Probe 表示组件健康状态
 	// Probe represents readiness status of a given component.
 	Probe interface {
+		// MarkReady 设置组件为 ready 状态
 		// MarkReady sets a ready state for the endpoint handlers.
 		MarkReady()
+		// MarkReady 设置组件为 not ready 状态
 		// MarkNotReady sets a not ready state for the endpoint handlers.
 		MarkNotReady()
+		// IsReady 返回组件内部状态
 		// IsReady return inner state for the component.
 		IsReady() bool
+		// Name 返回组件名称
 		// Name return probe name identifier
 		Name() string
 	}
@@ -30,7 +35,7 @@ type (
 		ready syncx.AtomicBool
 		name  string
 	}
-
+    // comboHealthManager 折叠给定的组件状态，在多线程下安全的反映组件状态。
 	// comboHealthManager folds given probes into one, reflects their statuses in a thread-safe way.
 	comboHealthManager struct {
 		mu     sync.Mutex
