@@ -56,7 +56,7 @@ func newEngine(c RestConf) *engine {
 
 func (ng *engine) addRoutes(r featuredRoutes) {
 	ng.routes = append(ng.routes, r)
-
+    // 需要保证ng的超市时间是所有路由最大的，否则无法设置http server的读超时和写超时
 	// need to guarantee the timeout is the max of all routes
 	// otherwise impossible to set http.Server.ReadTimeout & WriteTimeout
 	if r.timeout > ng.timeout {
@@ -113,6 +113,7 @@ func (ng *engine) bindRoute(fr featuredRoutes, router httpx.Router, metrics *sta
 }
 
 func (ng *engine) bindRoutes(router httpx.Router) error {
+	// 创建metrics
 	metrics := ng.createMetrics()
 
 	for _, fr := range ng.routes {
@@ -185,7 +186,7 @@ func (ng *engine) checkedTimeout(timeout time.Duration) time.Duration {
 
 func (ng *engine) createMetrics() *stat.Metrics {
 	var metrics *stat.Metrics
-
+    // 如果ng 配置存在name，则创建metrics，否则创建metrics的默认值
 	if len(ng.conf.Name) > 0 {
 		metrics = stat.NewMetrics(ng.conf.Name)
 	} else {

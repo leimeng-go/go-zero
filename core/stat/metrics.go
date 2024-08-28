@@ -18,6 +18,7 @@ var (
 )
 
 type (
+	// Writer 接口包装写入接口
 	// Writer interface wraps the Write method.
 	Writer interface {
 		Write(report *StatReport) error
@@ -55,7 +56,7 @@ func SetReportWriter(writer Writer) {
 	reportWriter = writer
 	writerLock.Unlock()
 }
-
+//  NewMetrics 创建一个Metrics
 // NewMetrics returns a Metrics.
 func NewMetrics(name string) *Metrics {
 	container := &metricsContainer{

@@ -34,6 +34,7 @@ type (
 		timeout   time.Duration
 		priority  bool
 		jwt       jwtSetting
+		// 签名设置
 		signature signatureSetting
 		routes    []Route
 		maxBytes  int64

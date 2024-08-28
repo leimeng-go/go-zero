@@ -27,7 +27,7 @@ type (
 		// RemoveAll removes the contained tasks, and return them.
 		RemoveAll() any
 	}
-
+    // PeriodicalExecutor 是一个周期执行器，用于周期性执行任务。
 	// A PeriodicalExecutor is an executor that periodically execute tasks.
 	PeriodicalExecutor struct {
 		commander chan any
