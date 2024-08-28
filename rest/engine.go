@@ -30,6 +30,7 @@ type engine struct {
 	// timeout is the max timeout of all routes
 	timeout              time.Duration
 	unauthorizedCallback handler.UnauthorizedCallback
+	// 未通过签名验证的handler 
 	unsignedCallback     handler.UnsignedCallback
 	chain                chain.Chain
 	middlewares          []Middleware
@@ -81,6 +82,7 @@ func (ng *engine) appendAuthHandler(fr featuredRoutes, chn chain.Chain,
 }
 
 func (ng *engine) bindFeaturedRoutes(router httpx.Router, fr featuredRoutes, metrics *stat.Metrics) error {
+	// 签名验证起
 	verifier, err := ng.signatureVerifier(fr.signature)
 	if err != nil {
 		return err
@@ -124,7 +126,7 @@ func (ng *engine) bindRoutes(router httpx.Router) error {
 
 	return nil
 }
-
+// buildChainWithNativeMiddlewares 创建原始的handler链
 func (ng *engine) buildChainWithNativeMiddlewares(fr featuredRoutes, route Route,
 	metrics *stat.Metrics) chain.Chain {
 	chn := chain.New()
@@ -268,12 +270,13 @@ func (ng *engine) setUnsignedCallback(callback handler.UnsignedCallback) {
 }
 
 func (ng *engine) signatureVerifier(signature signatureSetting) (func(chain.Chain) chain.Chain, error) {
+	// 如果signature未启用,返回空chain
 	if !signature.enabled {
 		return func(chn chain.Chain) chain.Chain {
 			return chn
 		}, nil
 	}
-
+    // 如果私钥长度为零
 	if len(signature.PrivateKeys) == 0 {
 		if signature.Strict {
 			return nil, ErrSignatureConfig
@@ -308,6 +311,7 @@ func (ng *engine) signatureVerifier(signature signatureSetting) (func(chain.Chai
 }
 
 func (ng *engine) start(router httpx.Router, opts ...StartOption) error {
+	// router http server Handler
 	if err := ng.bindRoutes(router); err != nil {
 		return err
 	}

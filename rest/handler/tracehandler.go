@@ -21,7 +21,7 @@ type (
 		traceIgnorePaths []string
 	}
 )
-
+// TraceHandler 返回一个链路处理中间件
 // TraceHandler return a middleware that process the opentelemetry.
 func TraceHandler(serviceName, path string, opts ...TraceOption) func(http.Handler) http.Handler {
 	var options traceOptions

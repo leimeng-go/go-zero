@@ -20,7 +20,7 @@ func ContentSecurityHandler(decrypters map[string]codec.RsaDecrypter, tolerance 
 	strict bool, callbacks ...UnsignedCallback) func(http.Handler) http.Handler {
 	return LimitContentSecurityHandler(maxBytes, decrypters, tolerance, strict, callbacks...)
 }
-
+// LimitContentSecurityHandler 返回一个内容安全验证的中间件
 // LimitContentSecurityHandler returns a middleware to verify content security.
 func LimitContentSecurityHandler(limitBytes int64, decrypters map[string]codec.RsaDecrypter,
 	tolerance time.Duration, strict bool, callbacks ...UnsignedCallback) func(http.Handler) http.Handler {
