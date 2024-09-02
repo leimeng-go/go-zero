@@ -28,12 +28,15 @@ func TraceHandler(serviceName, path string, opts ...TraceOption) func(http.Handl
 	for _, opt := range opts {
 		opt(&options)
 	}
-
+    // 创建一个忽略path set 
 	ignorePaths := collection.NewSet()
+	// 添加忽略path到ignorePaths
 	ignorePaths.AddStr(options.traceIgnorePaths...)
 
 	return func(next http.Handler) http.Handler {
+		// 创建一个tracer
 		tracer := otel.Tracer(trace.TraceName)
+		// 获取当前全局的 TextMapPropagator 实例
 		propagator := otel.GetTextMapPropagator()
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

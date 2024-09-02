@@ -159,7 +159,7 @@ func TestExtractValidTraceContext(t *testing.T) {
 	}
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{}, propagation.Baggage{}))
-	propagator := otel.GetTextMapPropagator()
+	propagator := otel.GetTextMapPropagator() 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -353,4 +353,8 @@ func TestInvalidSpanContextDropped(t *testing.T) {
 	}
 	assert.Empty(t, mm.Keys())
 	assert.Equal(t, "", mm.Get("traceparent"), "injected invalid SpanContext")
+}
+
+func TestHttpTracer(t *testing.T){
+	const name =""
 }

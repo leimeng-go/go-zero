@@ -14,13 +14,13 @@ const (
 	uint64Type
 	stringType
 )
-
+// Set不是线程安全,
 // Set is not thread-safe, for concurrent use, make sure to use it with synchronization.
 type Set struct {
 	data map[any]lang.PlaceholderType
 	tp   int
 }
-
+// NewSet 返回一个管理类型的 Set，只能放入相同类型的值。
 // NewSet returns a managed Set, can only put the values with the same type.
 func NewSet() *Set {
 	return &Set{
@@ -28,7 +28,7 @@ func NewSet() *Set {
 		tp:   untyped,
 	}
 }
-
+// NewUnmanagedSet 返回一个非管理类型的 Set,可以放不同类型的值。
 // NewUnmanagedSet returns an unmanaged Set, which can put values with different types.
 func NewUnmanagedSet() *Set {
 	return &Set{
