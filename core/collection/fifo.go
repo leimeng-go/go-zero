@@ -2,6 +2,8 @@ package collection
 
 import "sync"
 
+
+// 一个线程安全的FIFO队列
 // A Queue is a FIFO queue.
 type Queue struct {
 	lock     sync.Mutex
@@ -12,6 +14,9 @@ type Queue struct {
 	count    int
 }
 
+
+
+// NewQueue 返回一个队列对象.
 // NewQueue returns a Queue object.
 func NewQueue(size int) *Queue {
 	return &Queue{

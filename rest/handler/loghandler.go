@@ -88,15 +88,19 @@ func (w *detailLoggedResponseWriter) WriteHeader(code int) {
 // DetailedLogHandler returns a middleware that logs http request and response in details.
 func DetailedLogHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 申明一个耗时统计timer
 		timer := utils.NewElapsedTimer()
 		var buf bytes.Buffer
+		// 封装writer
 		rw := response.NewWithCodeResponseWriter(w)
 		lrw := newDetailLoggedResponseWriter(rw, &buf)
-
+        
 		var dup io.ReadCloser
+		// 拷贝r.Body ,返回两个ReaderClose
 		r.Body, dup = iox.DupReadCloser(r.Body)
 		logs := new(internal.LogCollector)
 		next.ServeHTTP(lrw, r.WithContext(internal.WithLogCollector(r.Context(), logs)))
+		// 重新赋初始值
 		r.Body = dup
 		logDetails(r, lrw, timer, logs)
 	})

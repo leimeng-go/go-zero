@@ -6,7 +6,7 @@ import (
 
 	"github.com/zeromicro/go-zero/core/timex"
 )
-
+// 经过的多少时间的计时器
 // An ElapsedTimer is a timer to track the elapsed time.
 type ElapsedTimer struct {
 	start time.Duration
