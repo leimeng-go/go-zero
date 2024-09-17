@@ -130,7 +130,7 @@ func TestDontTracingSpan(t *testing.T) {
 func TestTraceResponseWriter(t *testing.T) {
 	ztrace.StartAgent(ztrace.Config{
 		Name:     "go-zero-test",
-		Endpoint: "http://localhost:14268/api/traces",
+		Endpoint: "http://192.168.3.55:14268/api/traces",
 		Batcher:  "jaeger",
 		Sampler:  1.0,
 	})
@@ -138,7 +138,7 @@ func TestTraceResponseWriter(t *testing.T) {
 
 	for _, test := range []int{0, 200, 300, 400, 401, 500, 503} {
 		t.Run(strconv.Itoa(test), func(t *testing.T) {
-			h := chain.New(TraceHandler("foo", "bar")).Then(
+			h := chain.New(TraceHandler("foo", "bar")).Append(messageMiddleware("哈哈哈哈")).Then(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					span := trace.SpanFromContext(r.Context())
 					spanCtx := span.SpanContext()
@@ -149,6 +149,7 @@ func TestTraceResponseWriter(t *testing.T) {
 					}
 					w.Write([]byte("hello"))
 				}))
+				
 			ts := httptest.NewServer(h)
 			defer ts.Close()
 
