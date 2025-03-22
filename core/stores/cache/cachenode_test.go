@@ -44,6 +44,8 @@ func TestCacheNode_DelCache(t *testing.T) {
 			stat:           NewStat("any"),
 			errNotFound:    errTestNotFound,
 		}
+		
+		
 		assert.Nil(t, cn.Del())
 		assert.Nil(t, cn.Del([]string{}...))
 		assert.Nil(t, cn.Del(make([]string, 0)...))
