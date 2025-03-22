@@ -19,6 +19,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+func messageMiddleware(msg string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func TestOtelHandler(t *testing.T) {
 	ztrace.StartAgent(ztrace.Config{
 		Name:     "go-zero-test",
@@ -149,7 +157,7 @@ func TestTraceResponseWriter(t *testing.T) {
 					}
 					w.Write([]byte("hello"))
 				}))
-				
+
 			ts := httptest.NewServer(h)
 			defer ts.Close()
 
