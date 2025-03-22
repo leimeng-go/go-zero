@@ -1,3 +1,5 @@
+//go:build !no_k8s
+
 package internal
 
 import (
@@ -26,16 +28,16 @@ type kubeResolver struct {
 	stopCh chan struct{}
 }
 
+func (r *kubeResolver) Close() {
+	close(r.stopCh)
+}
+
 func (r *kubeResolver) ResolveNow(_ resolver.ResolveNowOptions) {}
 
 func (r *kubeResolver) start() {
 	threading.GoSafe(func() {
 		r.inf.Start(r.stopCh)
 	})
-}
-
-func (r *kubeResolver) Close() {
-	close(r.stopCh)
 }
 
 type kubeBuilder struct{}

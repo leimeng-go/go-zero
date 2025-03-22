@@ -36,6 +36,7 @@ type (
 		jwt       jwtSetting
 		// 签名设置
 		signature signatureSetting
+		sse       bool
 		routes    []Route
 		maxBytes  int64
 	}
